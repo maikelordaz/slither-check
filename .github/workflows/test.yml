@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [master]
 
+permissions:
+  contents: write
+
 jobs:
   analyze:
     runs-on: ubuntu-latest
@@ -11,8 +14,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Determine Branch Name
+        id: set_branch
+        run: |
+          branch_name=$(echo "${{ github.event.pull_request.head.ref }}")
+          echo "$branch_name"
+          echo "branch=$branch_name" >> $GITHUB_OUTPUT
+
+      - name: Fetch repository
+        run: |
+          git fetch
+
       - name: Install Aderyn
         run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/cyfrin/aderyn/releases/latest/download/aderyn-installer.sh | bash
 
       - name: Report
         run: aderyn .
+
+      - name: Commit report
+        env:
+          COMMIT_MSG: "ci(aderyn report): Static analysis report"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          BRANCH_REF: "${{ steps.set_branch.outputs.branch }}"
+        run: |
+          git config user.email "github-actions@github.com"
+          git config user.name "Github Actions"
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
+          git add .
+          git diff --quiet && git diff --staged --quiet || (git commit -m "${COMMIT_MSG}"; git push -f origin HEAD:${BRANCH_REF})
