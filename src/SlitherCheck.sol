@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
+// Checking reports
 pragma solidity 0.8.28;
 
 contract SlitherCheck {
